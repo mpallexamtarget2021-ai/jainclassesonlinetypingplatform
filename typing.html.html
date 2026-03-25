@@ -1,0 +1,232 @@
+<body>
+  <!-- Back to Home button -->
+  <div style="text-align:right; margin:20px;">
+    <button onclick="window.location.href='file:///C:/Users/Mark/Desktop/typing/index.html.html'">Back to Home</button>
+  </div>
+</body>
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<title>CPCT Style Hindi Typing Test</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body {
+    font-family: 'Noto Sans Devanagari', 'Mangal', sans-serif;
+    background: #f0f0f0;
+    margin: 0;
+}
+.container {
+    max-width: 900px;
+    margin: 30px auto;
+    background: #fff;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+h1 { text-align:center; color:#2575fc; }
+#progressBarContainer { width:100%; background:#eee; height:20px; border-radius:10px; margin-bottom:15px; }
+#progressBar { height:100%; width:100%; background:linear-gradient(90deg, #6a11cb, #2575fc); transition:width 0.3s; }
+#textDisplay { background:#f9f9f9; padding:20px; font-size:20px; line-height:1.8; border-radius:10px; max-height:120px; overflow-y:auto; }
+.word { margin-right:5px; }
+.correct { color:green; }
+.wrong { color:red; text-decoration:underline; }
+.current { background:#fffa8b; border-radius:4px; transition:0.2s; }
+textarea { width:100%; height:150px; font-size:20px; padding:15px; border-radius:12px; border:2px solid #2575fc; margin-bottom:15px; resize:none; outline:none; }
+.info { display:flex; justify-content:space-around; margin-bottom:15px; font-size:18px; flex-wrap:wrap; }
+button { padding:12px 25px; font-size:16px; margin:5px; border:none; border-radius:8px; font-weight:bold; cursor:pointer; transition:0.3s; }
+.start { background:#28a745; color:#fff; } .start:hover { background:#218838; }
+.submit { background:#dc3545; color:#fff; } .submit:hover { background:#c82333; }
+.reset { background:#ffc107; color:#333; } .reset:hover { background:#e0a800; }
+#resultPopup { display:none; position:fixed; top:10%; left:50%; transform:translate(-50%,0); background:#fff; border-radius:12px; border:3px solid #2575fc; padding:25px; z-index:1000; font-size:20px; box-shadow:0 10px 30px rgba(0,0,0,0.3); }
+#resultPopup button { margin:10px; padding:10px 20px; border-radius:8px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>CPCT Style Hindi Typing Test</h1>
+<div id="progressBarContainer"><div id="progressBar"></div></div>
+<div id="textDisplay"></div>
+<textarea id="inputText" placeholder="यहाँ टाइप करें..." disabled></textarea>
+<div class="info">
+⏱ Time: <span id="time">10:00</span> |
+⚡ Speed: <span id="speed">0</span> |
+🅱️ Backspace: <span id="backspaceCount">0</span> |
+✅ Correct Words: <span id="correctWords">0</span> |
+❌ Wrong Words: <span id="wrongWords">0</span> |
+🎯 Accuracy: <span id="accuracy">0</span>%
+</div>
+<div style="text-align:center;">
+<button class="start" onclick="startTest()">Start Test</button>
+<button class="submit" onclick="endTest()">Submit Test</button>
+<button class="reset" onclick="resetLeaderboard()">Reset Leaderboard</button>
+</div>
+<div id="leaderboard">
+<h3>Leaderboard (Top Scores)</h3>
+<ol id="topScores"></ol>
+</div>
+</div>
+
+<div id="resultPopup">
+<h2>Result / Certificate</h2>
+<p>Speed: <span id="resSpeed">0</span> WPM</p>
+<p>Accuracy: <span id="resAccuracy">0</span>%</p>
+<p>Backspace Pressed: <span id="resBackspace">0</span></p>
+<p>Correct Words: <span id="resCorrectWords">0</span></p>
+<p>Wrong Words: <span id="resWrongWords">0</span></p>
+<p>Status: <span id="resStatus"></span></p>
+<button onclick="closeResult()">Close</button>
+<button onclick="printResult()">Print Certificate</button>
+</div>
+
+<script>
+// Gail Unicode Mapping
+const gailMapping = {
+  '1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9','0':'0','-':'.','=':'त्र',
+  '!':'!','@':'/','#':'रु','$':'+','%':'ः','^':"'",'&':'-','*':"'",'(':';',
+
+  ')':'द्घ','_':'ऋ','+':'़','Q':'फ','W':'ॅ','E':'म्','R':'त्','T':'ज्','Y':'ल्','U':'न्','I':'प्','O':'व्','P':'च्',
+  '{':'क्ष्','}':'द्व','|':'द्य','A':'।','S':'ै','D':'क्','F':'थ्','G':'ळ','H':'भ्','J':'श्र','K':'ज्ञ','L':'स्',
+  ':':'रू','"':'ष्','Z':'र्','X':'ग्','C':'ब्','V':'ट','B':'ठ','N':'छ','M':'ड','<':'ढ','>':'झ','?':'घ्',
+  'q':'ु','w':'ू','e':'म','r':'त','t':'ज','y':'ल','u':'न','i':'प','o':'व','p':'च','[':'ख्',']':',','/':'?',
+  'a':'ं','s':'े','d':'क','f' : 'ि','g':'ह','h':'ी','j':'र','k':'ा','l':'स',';':'य',"'":'श्','z':'्र','x':'ग','c':'ब','v':'अ','b':'इ','n':'द','m':'उ',',':'ए','.':'ण्'
+};
+
+const paragraph = ["कानून नियमों का एक समूह है जिसे सरकारी या सामाजिक संस्‍थाओं द्वारा व्‍यवहार को विनियमित करने के लिए बनाया और लागू किया जाता है। हालांकि इसकी सटीक परिभाषा लंबे समय से बहस का विषय रही है। इसे विभिन्‍न रूप से विज्ञान और न्‍याय की कला के रूप में वर्णित किया गया है। राज्‍य द्वारा लागू कानून विधायिका द्वारा बनाए जा सकते हैं, जिसके परिणामस्‍वरूप कानून बनते हैं, कार्यपालिका द्वारा आदेशों और विनियमों के माध्‍यम से या न्‍यायाधीशों के निर्णयों द्वारा, जो सामान्‍य कानून क्षेत्राधिकारों में मिसाल बनते हैं। एक निंरकुश शासक अपने अधिकार क्षेत्र में इन कार्यों का प्रयोग कर सकता है। कानूनों का निर्माण स्‍वयं लिखित या अलिखित संविधान और उसमें निहित अधिकारों से प्रभावित हो सकता है। कानून राजनीति, अर्थव्‍यवस्‍था, इतिहास और समाज को विभिन्‍न तरीकों से आकार देता है और लोगों के बीच संबंधों के मध्‍यस्‍थ के रूप में भी कार्य करता है। विभिन्‍न न्‍यायक्षेत्रों में कानूनी प्रणालियां भिन्‍न-भिन्‍न होती हैं, और तुलनात्‍मक कानून में इन अंतरों का विश्‍लेषण किया जाता है। दीवानी कानून वाले न्‍यायक्षेत्रों में, विधायिका या अन्‍य केंद्रीय निकाय कानून को संहिताबद्ध और समेकित करता है। सामान्‍य कानून प्रणालियों में न्‍यायाधीश मिसाल के तौर पर बाध्‍यकारी कानूनी निर्णय दे सकते हैं, हालांकि कभी-कभी इसे उच्‍च न्‍यायालय या विधायिका द्वारा रद्द किया जा सकता है। धार्मिक कानून कुछ धार्मिक समुदायों और राज्‍यों में प्रचलन में है, और इसने ऐतिहासिक रूप से धर्मनिरपेक्ष कानून को प्रभावित किया है। कानून के दायरे को दो क्षेत्रों में विभाजित किया जा सकता है, सार्वजनिक कानून सरकार और समाज से संबंधित है, जिसमें संवैधानिक कानून, प्रशासनिक कानून और आपराधिक कानून शामिल है, जबकि निजी कानून अनुबंध, संपत्ति अपकृत्‍य, अपराध और वाणिज्यिक कानून जैसे क्षेत्रों में पक्षों के बीच कानूनी विवादों से संबंधित है। यह अंतर दीवानी कानून वाले देशों में, विशेष रूप से प्रशासनिक न्‍यायालयों की एक अलग प्रणाली वाले देशों में अधिक मजबूत है। इसके विपरीत सार्वजनिक निजी कानून का विभाजन सामान्‍य कानून क्षेत्राधिकारों में कम स्‍पष्‍ट है।"];
+const textDisplay = document.getElementById("textDisplay");
+const inputText = document.getElementById("inputText");
+
+let timer=600, interval=null, backspaceCount=0;
+let words=[], currentWordIndex=0;
+let correctWords=0, wrongWords=0;
+
+// Leaderboard
+function loadLeaderboard(){
+  const topScores=JSON.parse(localStorage.getItem("cpctLeaderboard")||"[]");
+  const ol=document.getElementById("topScores"); ol.innerHTML="";
+  topScores.slice(0,5).forEach(score=>{
+    const li=document.createElement("li");
+    li.innerText=`${score.speed} WPM | ${score.accuracy}% | ${score.status}`;
+    ol.appendChild(li);
+  });
+}
+loadLeaderboard();
+function resetLeaderboard(){ localStorage.removeItem("cpctLeaderboard"); loadLeaderboard(); }
+
+// Load text
+function loadText(){
+    textDisplay.innerHTML=""; words=[];
+    paragraph.forEach(p=>{
+        const div=document.createElement("div");
+        p.split(" ").forEach(word=>{
+            const span=document.createElement("span");
+            span.classList.add("word");
+            word.split("").forEach(c=>{
+                const cSpan=document.createElement("span");
+                cSpan.innerText=c;
+                span.appendChild(cSpan);
+            });
+            div.appendChild(span);
+            words.push(span);
+            div.appendChild(document.createTextNode(" "));
+        });
+        textDisplay.appendChild(div);
+    });
+    if(words[0]) words[0].classList.add("current");
+}
+
+// Timer
+function startTest(){
+    inputText.disabled=false; inputText.value=""; inputText.focus();
+    timer=600; updateTimeDisplay();
+    backspaceCount=0; correctWords=0; wrongWords=0; currentWordIndex=0;
+    document.getElementById("backspaceCount").innerText=0;
+    document.getElementById("correctWords").innerText=0;
+    document.getElementById("wrongWords").innerText=0;
+    document.getElementById("speed").innerText=0;
+    document.getElementById("accuracy").innerText=0;
+    words.forEach(w=>w.classList.remove("current","correct","wrong"));
+    words[0].classList.add("current");
+    clearInterval(interval);
+    interval=setInterval(()=>{
+        timer--; updateTimeDisplay();
+        updateProgressBar();
+        if(timer<=0) endTest();
+    },1000);
+}
+
+function updateTimeDisplay(){
+    const m=Math.floor(timer/60); const s=timer%60;
+    document.getElementById("time").innerText=`${m}:${s<10?'0'+s:s}`;
+}
+function updateProgressBar(){
+    const percent=(timer/600)*100;
+    document.getElementById("progressBar").style.width=`${percent}%`;
+}
+
+// Typing
+inputText.addEventListener("keydown", e=>{
+    if(e.key==='Backspace'){ backspaceCount++; document.getElementById("backspaceCount").innerText=backspaceCount; return; }
+    if(e.key===' '){ inputText.value += ' '; return; }
+    e.preventDefault();
+    let char = gailMapping[e.key];
+    if(char) inputText.value += char;
+});
+
+inputText.addEventListener("input", ()=>{
+    const typed=inputText.value.split(/\s+/);
+    correctWords=0; wrongWords=0;
+    words.forEach((w,idx)=>{
+        w.classList.remove("current","correct","wrong");
+        const typedWord=typed[idx]||"";
+        let wordError=false;
+        w.querySelectorAll("span").forEach((cSpan,cIdx)=>{
+            cSpan.classList.remove("correct","wrong");
+            if(typedWord[cIdx]){
+                if(typedWord[cIdx]===cSpan.innerText) cSpan.classList.add("correct");
+                else { cSpan.classList.add("wrong"); wordError=true; }
+            }
+        });
+        if(typedWord.length>0){
+            if(wordError) wrongWords++; else correctWords++;
+        }
+        if(idx===typed.length-1) w.classList.add("current");
+    });
+    const currentWord=words[typed.length-1];
+    if(currentWord) currentWord.scrollIntoView({behavior:"smooth", block:"center"});
+    document.getElementById("correctWords").innerText=correctWords;
+    document.getElementById("wrongWords").innerText=wrongWords;
+    const total=correctWords+wrongWords;
+    document.getElementById("accuracy").innerText=total?((correctWords/total)*100).toFixed(2):0;
+    document.getElementById("speed").innerText=(correctWords*5/((600-timer)/60||1)).toFixed(2);
+});
+
+// End test
+function endTest(){
+    clearInterval(interval); inputText.disabled=true;
+    const totalTyped=inputText.value.replace(/\s/g,'').length;
+    const accuracy=totalTyped?((totalTyped-wrongWords)/totalTyped*100).toFixed(2):0;
+    const speed=(correctWords*5/((600-timer)/60||1)).toFixed(2);
+    const status=accuracy>=80?"Pass":"Fail";
+    document.getElementById("resSpeed").innerText=speed;
+    document.getElementById("resAccuracy").innerText=accuracy;
+    document.getElementById("resBackspace").innerText=backspaceCount;
+    document.getElementById("resCorrectWords").innerText=correctWords;
+    document.getElementById("resWrongWords").innerText=wrongWords;
+    document.getElementById("resStatus").innerText=status;
+    document.getElementById("resultPopup").style.display="block";
+    const topScores=JSON.parse(localStorage.getItem("cpctLeaderboard")||"[]");
+    topScores.push({speed,accuracy,status});
+    topScores.sort((a,b)=>b.speed-a.speed);
+    localStorage.setItem("cpctLeaderboard",JSON.stringify(topScores));
+    loadLeaderboard();
+}
+
+function closeResult(){ document.getElementById("resultPopup").style.display="none"; }
+function printResult(){ window.print(); }
+
+loadText();
+
+</script>
+</body>
+</html>
